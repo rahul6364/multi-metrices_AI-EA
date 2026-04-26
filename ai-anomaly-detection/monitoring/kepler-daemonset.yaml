@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kepler
+  namespace: monitoring
+  labels:
+    app: kepler
+spec:
+  selector:
+    matchLabels:
+      app: kepler
+  template:
+    metadata:
+      labels:
+        app: kepler
+    spec:
+      serviceAccountName: kepler-sa
+      hostPID: true
+      containers:
+        - name: kepler
+          image: quay.io/sustainable_computing_io/kepler:release-0.7.3
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          env:
+            - name: ENABLE_EBPF_CGROUPID
+              value: 'false'
+            - name: EXPOSE_HW_COUNTER_METRICS
+              value: 'false'
+            - name: EXPOSE_IRQ_COUNTER_METRICS
+              value: 'false'
+            - name: ENABLE_GPU
+              value: 'false'
+            - name: ENABLE_QAT
+              value: 'false'
+            - name: ENABLE_PERF_EVENT
+              value: 'false'
+            - name: ENABLE_BPF_STATS
+              value: 'false'
+            - name: KEPLER_LOG_LEVEL
+              value: '1'
+            - name: METRIC_PATH
+              value: '/metrics'
+            - name: BIND_ADDRESS
+              value: '0.0.0.0:9102'
+          ports:
+            - name: metrics
+              containerPort: 9102
+          volumeMounts:
+            - name: proc
+              mountPath: /proc
+              readOnly: true
+            - name: sys
+              mountPath: /sys
+              readOnly: true
+            - name: pod-resources
+              mountPath: /var/lib/kubelet/pod-resources
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+            type: Directory
+        - name: sys
+          hostPath:
+            path: /sys
+            type: Directory
+        - name: pod-resources
+          hostPath:
+            path: /var/lib/kubelet/pod-resources
+            type: Directory

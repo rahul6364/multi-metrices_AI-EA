@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attack-cpu
+  namespace: default
+  labels:
+    app: attack-cpu
+    workload-type: attack
+    attack-type: cpu-stress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attack-cpu
+  template:
+    metadata:
+      labels:
+        app: attack-cpu
+        workload-type: attack
+        attack-type: cpu-stress
+    spec:
+      containers:
+        - name: attack-cpu
+          image: polinux/stress
+          command: ["stress", "--cpu", "2", "--timeout", "600s"]
+          resources:
+            requests:
+              cpu: 200m
+              memory: 64Mi
+            limits:
+              cpu: 2000m
+              memory: 128Mi

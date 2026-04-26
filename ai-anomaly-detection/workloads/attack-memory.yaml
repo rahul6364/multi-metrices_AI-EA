@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attack-memory
+  namespace: default
+  labels:
+    app: attack-memory
+    workload-type: attack
+    attack-type: memory-abuse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attack-memory
+  template:
+    metadata:
+      labels:
+        app: attack-memory
+        workload-type: attack
+        attack-type: memory-abuse
+    spec:
+      containers:
+        - name: attack-memory
+          image: polinux/stress
+          command: ["stress", "--vm", "1", "--vm-bytes", "200M", "--timeout", "600s"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 300Mi

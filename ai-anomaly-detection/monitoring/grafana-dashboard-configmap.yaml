@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-energy-anomaly
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  energy-anomaly-dashboard.json: |
+    {
+      "id": null,
+      "uid": "energy-anomaly-ieee",
+      "title": "AI-Based Energy-Wasting Attack Detection",
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "5s",
+      "time": {"from": "now-15m", "to": "now"},
+      "panels": [
+        {"type": "timeseries", "title": "CPU Usage per pod", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "targets": [{"refId": "A", "expr": "sum by(pod)(rate(container_cpu_usage_seconds_total{namespace=\"default\"}[30s]))"}]},
+        {"type": "timeseries", "title": "Memory Usage per pod", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "targets": [{"refId": "A", "expr": "sum by(pod)(container_memory_working_set_bytes{namespace=\"default\"})"}]},
+        {"type": "timeseries", "title": "Energy Consumption per pod", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "targets": [{"refId": "A", "expr": "sum by(container_name)(rate(kepler_container_joules_total{namespace=\"default\"}[30s]))"}, {"refId": "B", "expr": "sum by(pod)(rate(container_cpu_usage_seconds_total{namespace=\"default\"}[30s])) * 0.4"}]},
+        {"type": "timeseries", "title": "Network Traffic per pod", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "targets": [{"refId": "A", "expr": "sum by(pod)(rate(container_network_receive_bytes_total{namespace=\"default\"}[30s]))"}]},
+        {"type": "gauge", "title": "Energy-to-CPU Ratio", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "targets": [{"refId": "A", "expr": "(sum by(pod)(rate(kepler_container_joules_total{namespace=\"default\"}[30s])))/(sum by(pod)(rate(container_cpu_usage_seconds_total{namespace=\"default\"}[30s])) + 0.0001)"}]},
+        {"type": "stat", "title": "Node CPU Usage %", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "targets": [{"refId": "A", "expr": "100 * (1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[30s])))"}], "fieldConfig": {"defaults": {"unit": "percent"}}}
+      ]
+    }

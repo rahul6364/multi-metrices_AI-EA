@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kepler-service
+  namespace: monitoring
+  labels:
+    app: kepler
+spec:
+  type: ClusterIP
+  selector:
+    app: kepler
+  ports:
+    - name: metrics
+      port: 9102
+      targetPort: 9102
+      protocol: TCP

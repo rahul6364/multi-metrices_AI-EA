@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attack-combined
+  namespace: default
+  labels:
+    app: attack-combined
+    workload-type: attack
+    attack-type: combined
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attack-combined
+  template:
+    metadata:
+      labels:
+        app: attack-combined
+        workload-type: attack
+        attack-type: combined
+    spec:
+      containers:
+        - name: attack-combined
+          image: polinux/stress
+          command: ["stress", "--cpu", "2", "--vm", "1", "--vm-bytes", "128M", "--timeout", "600s"]
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 2000m
+              memory: 300Mi

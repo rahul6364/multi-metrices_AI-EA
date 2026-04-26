@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-detector
+  namespace: default
+  labels:
+    app: ai-detector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-detector
+  template:
+    metadata:
+      labels:
+        app: ai-detector
+    spec:
+      serviceAccountName: ai-detector
+      containers:
+        - name: ai-detector
+          image: todo-ai-detector:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PROMETHEUS_URL
+              value: http://prometheus-service.monitoring:9090
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 200m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+          volumeMounts:
+            - name: model
+              mountPath: /app/model
+            - name: logs
+              mountPath: /app/logs
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: model
+          persistentVolumeClaim:
+            claimName: ai-detector-model-pvc
+        - name: logs
+          persistentVolumeClaim:
+            claimName: ai-detector-logs-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: ai-detector-data-pvc

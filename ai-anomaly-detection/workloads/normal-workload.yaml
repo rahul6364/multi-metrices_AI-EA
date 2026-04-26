@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: normal-workload
+  namespace: default
+  labels:
+    app: normal-workload
+    workload-type: normal
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: normal-workload
+  template:
+    metadata:
+      labels:
+        app: normal-workload
+        workload-type: normal
+    spec:
+      containers:
+        - name: normal-worker
+          image: busybox:1.35
+          command: ["sh", "-c", "while true; do echo 'working'; sleep 3; done"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
