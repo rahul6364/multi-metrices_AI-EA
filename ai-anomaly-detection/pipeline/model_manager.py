@@ -29,14 +29,17 @@ class ModelManager:
     def __init__(self) -> None:
         self.state = config.STATE_IDLE
         self.training_buffer_8 = []
+        self.training_buffer_16 = []
         self.training_buffer_6 = []
         self.training_counts = defaultdict(int)
+        self.pod_seen_counts = defaultdict(int)
         self.training_pods = set()
         self.consecutive_count = defaultdict(int)
 
         self.model_energy_aware = None
         self.model_basic = None
         self.scaler_8 = None
+        self.scaler_16 = None
         self.scaler_6 = None
 
         self._evaluation_headers = [
@@ -45,7 +48,7 @@ class ModelManager:
             "energy_cpu_ratio", "cpu_variance", "memory_variance", "energy_variance", "avg_network", "avg_network_variance",
         ]
         self._ensure_csv(config.EVALUATION_LOG_PATH, self._evaluation_headers)
-        self._ensure_csv(config.TRAINING_DATA_PATH, ["model", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"])
+        self._ensure_csv(config.TRAINING_DATA_PATH, ["model"] + [f"f{i}" for i in range(1, 17)])
 
     def _ensure_csv(self, path: str, headers: list[str]) -> None:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -56,31 +59,60 @@ class ModelManager:
     def training_progress_windows(self) -> int:
         return min(self.training_counts.values()) if self.training_counts else 0
 
+    def prune_pods(self, live_pods: set[str]) -> None:
+        """Drop consecutive anomaly counters for pods that no longer exist."""
+        stale = [pod_name for pod_name in self.consecutive_count if pod_name not in live_pods]
+        for pod_name in stale:
+            del self.consecutive_count[pod_name]
+
     def start_baseline_collection(self) -> None:
         self.state = config.STATE_COLLECTING
         self.training_buffer_8 = []
+        self.training_buffer_16 = []
         self.training_buffer_6 = []
         self.training_counts = defaultdict(int)
+        self.pod_seen_counts = defaultdict(int)
         self.training_pods = set()
         self.consecutive_count = defaultdict(int)
         print("Baseline collection started.")
         print("IMPORTANT: Only normal workloads should be running now!")
         print(f"Progress will show: X/{config.MIN_TRAINING_WINDOWS} windows")
 
-    def add_training_window(self, features_8, features_6, pod_name: str, namespace: str) -> None:
+    def add_training_window(self, features_ea, features_6, pod_name: str, namespace: str) -> None:
         if self.state != config.STATE_COLLECTING:
             return
-        if pod_name.startswith("attack-") or namespace != config.TARGET_NAMESPACE:
+
+        is_attack = any(pod_name.startswith(prefix) for prefix in config.ATTACK_POD_PREFIXES)
+        if is_attack or namespace != config.TARGET_NAMESPACE:
             return
 
-        self.training_buffer_8.append(features_8.flatten().tolist())
+        # Ignore startup windows
+        self.pod_seen_counts[pod_name] += 1
+        if self.pod_seen_counts[pod_name] <= config.IGNORE_STARTUP_WINDOWS:
+            return
+
+        # features_ea can be features_8 or features_16. If features_8, retrieve features_16
+        if features_ea.shape[1] == 16:
+            feat_16 = features_ea.flatten().tolist()
+            feat_8 = feat_16[:8]
+        else:
+            feat_8 = features_ea.flatten().tolist()
+            from feature_engineer import FeatureEngineer
+            retrieved = getattr(FeatureEngineer, "last_extracted_features", {}).get(pod_name, None)
+            if retrieved is not None:
+                feat_16 = retrieved.flatten().tolist()
+            else:
+                feat_16 = feat_8 + [0.0] * 8
+
+        self.training_buffer_8.append(feat_8)
+        self.training_buffer_16.append(feat_16)
         self.training_buffer_6.append(features_6.flatten().tolist())
         self.training_counts[pod_name] += 1
         self.training_pods.add(pod_name)
 
         min_windows = min(self.training_counts.values()) if self.training_counts else 0
         print(
-            f"[TRAINING] {min_windows}/{config.MIN_TRAINING_WINDOWS} windows "
+            f"[TRAINING] {min_windows}/{config.MIN_TRAINING_WINDOWS} stable windows "
             f"(pods tracked: {len(self.training_pods)})"
         )
 
@@ -92,44 +124,51 @@ class ModelManager:
         self.state = config.STATE_TRAINING
 
         X_8 = np.array(self.training_buffer_8)
+        X_16 = np.array(self.training_buffer_16)
         X_6 = np.array(self.training_buffer_6)
 
         self.scaler_8 = StandardScaler().fit(X_8)
+        self.scaler_16 = StandardScaler().fit(X_16)
         self.scaler_6 = StandardScaler().fit(X_6)
 
-        X_8_scaled = self.scaler_8.transform(X_8)
+        X_16_scaled = self.scaler_16.transform(X_16)
         X_6_scaled = self.scaler_6.transform(X_6)
 
         self.model_energy_aware = IsolationForest(
             n_estimators=config.N_ESTIMATORS,
             contamination=config.CONTAMINATION,
+            bootstrap=config.MODEL_BOOTSTRAP,
+            max_samples=config.MAX_SAMPLES,
             random_state=config.RANDOM_STATE,
-            max_samples="auto",
-        ).fit(X_8_scaled)
+            n_jobs=config.MODEL_N_JOBS
+        ).fit(X_16_scaled)
 
         self.model_basic = IsolationForest(
             n_estimators=config.N_ESTIMATORS,
             contamination=config.CONTAMINATION,
+            bootstrap=config.MODEL_BOOTSTRAP,
+            max_samples=config.MAX_SAMPLES,
             random_state=config.RANDOM_STATE,
-            max_samples="auto",
+            n_jobs=config.MODEL_N_JOBS
         ).fit(X_6_scaled)
 
         os.makedirs("/app/model", exist_ok=True)
         joblib.dump(self.model_energy_aware, "/app/model/isolation_forest_energy_aware.pkl")
         joblib.dump(self.model_basic, "/app/model/isolation_forest_basic.pkl")
-        joblib.dump(self.scaler_8, "/app/model/scaler_8.pkl")
+        joblib.dump(self.scaler_16, "/app/model/scaler_16.pkl")
         joblib.dump(self.scaler_6, "/app/model/scaler_6.pkl")
 
         with open(config.TRAINING_DATA_PATH, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            for row in X_8.tolist():
+            for row in X_16.tolist():
                 writer.writerow(["energy_aware", *row])
             for row in X_6.tolist():
-                writer.writerow(["basic", *row, "", ""])
+                padding = [""] * (16 - len(row))
+                writer.writerow(["basic", *row, *padding])
 
         self.state = config.STATE_DETECTING
         print("✅ BOTH models trained!")
-        print(f"  Energy-Aware IF: trained on {len(X_8)} windows (8 features)")
+        print(f"  Energy-Aware IF: trained on {len(X_16)} windows (16 features)")
         print(f"  Basic IF: trained on {len(X_6)} windows (6 features)")
         print("Detection active. Deploy attack workload to test.")
 
@@ -144,22 +183,42 @@ class ModelManager:
             "consecutive_count": result.consecutive_count,
             "confirmed_attack": int(result.confirmed_attack),
             "true_label": result.true_label,
-            **result.feature_dict,
         }
+        # Explicitly extract only the fields defined in evaluation headers
+        for field in self._evaluation_headers:
+            if field not in row and field in result.feature_dict:
+                row[field] = result.feature_dict[field]
+
         with open(config.EVALUATION_LOG_PATH, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=self._evaluation_headers)
             writer.writerow(row)
 
-    def predict(self, features_8, features_6, pod_name: str, feature_dict: dict) -> PredictionResult:
-        x8 = self.scaler_8.transform(features_8)
-        pred_ea = self.model_energy_aware.predict(x8)[0]
-        score_ea = float(self.model_energy_aware.decision_function(x8)[0])
+    def predict(self, features_ea, features_6, pod_name: str, feature_dict: dict) -> PredictionResult:
+        # Retrieve features_16 if features_ea has shape (1, 8)
+        if features_ea.shape[1] == 16:
+            features_16 = features_ea
+        else:
+            from feature_engineer import FeatureEngineer
+            retrieved = getattr(FeatureEngineer, "last_extracted_features", {}).get(pod_name, None)
+            if retrieved is not None:
+                features_16 = retrieved
+            else:
+                features_16 = np.pad(features_ea, ((0, 0), (0, 8)), 'constant')
+
+        x16 = self.scaler_16.transform(features_16)
+        raw_pred_ea = self.model_energy_aware.predict(x16)[0]
+        score_ea = float(self.model_energy_aware.decision_function(x16)[0])
 
         x6 = self.scaler_6.transform(features_6)
         pred_basic = self.model_basic.predict(x6)[0]
         score_basic = float(self.model_basic.decision_function(x6)[0])
 
-        if pred_ea == -1:
+        # Primary decision: Energy-Aware Isolation Forest (-1 = anomaly).
+        # Static behavioral thresholds caused excessive false positives on normal
+        # backend/todo pods, so they are retained only for logging/research context.
+        is_anomalous_ea = raw_pred_ea == -1
+
+        if is_anomalous_ea:
             self.consecutive_count[pod_name] += 1
         else:
             self.consecutive_count[pod_name] = 0
@@ -169,7 +228,7 @@ class ModelManager:
 
         result = PredictionResult(
             pod_name=pod_name,
-            prediction_ea="ANOMALY" if pred_ea == -1 else "NORMAL",
+            prediction_ea="ANOMALY" if is_anomalous_ea else "NORMAL",
             score_ea=score_ea,
             prediction_basic="ANOMALY" if pred_basic == -1 else "NORMAL",
             score_basic=score_basic,

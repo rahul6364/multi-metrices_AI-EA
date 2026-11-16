@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attack-cryptojacking
+  namespace: default
+  labels:
+    app: attack-cryptojacking
+    workload-type: attack
+    attack-type: cryptojacking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attack-cryptojacking
+  template:
+    metadata:
+      labels:
+        app: attack-cryptojacking
+        workload-type: attack
+        attack-type: cryptojacking
+    spec:
+      containers:
+        - name: attack-cryptojacking
+          image: polinux/stress
+          command: ["stress", "--cpu", "1", "--cpu-method", "matrixprod", "--timeout", "600s"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 1500m
+              memory: 128Mi

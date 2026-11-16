@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attack-network
+  namespace: default
+  labels:
+    app: attack-network
+    workload-type: attack
+    attack-type: network-stress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: attack-network
+  template:
+    metadata:
+      labels:
+        app: attack-network
+        workload-type: attack
+        attack-type: network-stress
+    spec:
+      containers:
+        - name: attack-network
+          image: alexeiled/stress-ng
+          command: ["stress-ng", "--class", "network", "--timeout", "600s"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 1000m
+              memory: 128Mi

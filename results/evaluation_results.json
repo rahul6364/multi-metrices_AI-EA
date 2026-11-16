@@ -1,0 +1,22 @@
+{
+  "energy_aware": {
+    "model": "Energy-Aware",
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "accuracy": 0.9054054054054054,
+    "fpr": 0.0945945945945946,
+    "fnr": 0.0,
+    "detection_latency": -1.0
+  },
+  "basic": {
+    "model": "Basic IF",
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "accuracy": 0.9980694980694981,
+    "fpr": 0.0019305019305019305,
+    "fnr": 0.0,
+    "detection_latency": -1.0
+  }
+}

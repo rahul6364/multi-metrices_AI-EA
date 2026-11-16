@@ -180,3 +180,9 @@ cython_debug/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+# Ignore large archives & local environment
+*.zip
+*.tar
+.venv-research/
+ai-anomaly-detection/.port-forward-pids/
+ai-anomaly-detection/.port-forward-logs/

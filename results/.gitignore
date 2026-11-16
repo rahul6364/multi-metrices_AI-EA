@@ -1,0 +1,10 @@
+# Research experiment outputs (CSVs and figures are generated at runtime).
+# Directory structure is preserved; data files are ignored to avoid bloating git.
+
+results/logs/*.csv
+results/metrics/*.csv
+results/raw_metrics/*.csv
+results/experiments/**/*
+results/figures/*
+results/metrics_summary.csv
+!results/**/.gitkeep

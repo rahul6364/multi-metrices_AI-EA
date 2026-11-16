@@ -14,8 +14,7 @@ RUN npm install
 COPY . .
 
 # Set backend url
-ENV REACT_APP_API_URL=http://to-do-app.local
-
+ENV REACT_APP_API_URL=http://localhost:30238
 # Build the React application
 RUN npm run build
 

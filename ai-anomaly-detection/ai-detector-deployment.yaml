@@ -18,7 +18,7 @@ spec:
       serviceAccountName: ai-detector
       containers:
         - name: ai-detector
-          image: todo-ai-detector:latest
+          image: todo-ai-detector:v2
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
@@ -32,6 +32,20 @@ spec:
             limits:
               memory: 512Mi
               cpu: 500m
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
           volumeMounts:
             - name: model
               mountPath: /app/model

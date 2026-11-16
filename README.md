@@ -7,7 +7,7 @@ This repository contains two connected parts:
 
 Project context:
 
-- **Title**: AI-Based Detection of Energy-Wasting Cyber Attacks in Cloud Systems
+- **Title**: Multi-Metric Energy-Aware Behavioral Anomaly Detection and Automated Mitigation in Kubernetes-Based Cloud Systems
 - **Team**: CSE-26, Sahyadri College of Engineering, Mangaluru
 - **Guide**: Dr. Deepti Rai
 - **Environment target**: K3s single-node on WSL2 Ubuntu
@@ -44,14 +44,23 @@ Project context:
 ## 2) Repository Structure
 
 - `kubernetes/` - Todo app manifests (frontend, backend, mysql)
-- `backend/` - Flask backend source
-- `frontend/` - React frontend source
+- `backend/` - Flask backend source (Todo app)
+- `frontend/` - React frontend source (Todo app)
 - `ai-anomaly-detection/monitoring/` - Prometheus/Grafana/Kepler manifests
-- `ai-anomaly-detection/pipeline/` - AI detector Python pipeline + dashboard + Dockerfile
-- `ai-anomaly-detection/workloads/` - normal and attack workload manifests
-- `ai-anomaly-detection/*.yaml` - detector RBAC/deployment/service/PVC
-- `ai-anomaly-detection/deploy.sh` - end-to-end deploy helper
-- `ai-anomaly-detection/port-forward.sh` - reliable local browser access helper
+- `ai-anomaly-detection/pipeline/` - AI detector pipeline + upgraded dashboard + Dockerfile
+  - `templates/index.html` - Modern semantic HTML5 shell for EnergyGuard Dashboard
+  - `static/css/` - Modular dark cybersecurity design system (variables, layout, components, views)
+  - `static/js/` - Vanilla ES6 modules (router, reactive state store, API client, Chart.js factory, components, and 7 view modules)
+  - `dashboard.py` - Flask web application serving upgraded UI and REST endpoints
+  - `main.py` - Core telemetry collection, feature engineering, and model inference loop
+  - `model_manager.py` - Dual Isolation Forest (8-D Energy-Aware & 6-D Basic IF)
+  - `collector.py` - Prometheus & Kepler telemetry collector with WSL2 fallback
+  - `mitigator.py` - Progressive Kubernetes deployment-level mitigation (throttle & evict)
+  - `evaluator.py` - IEEE research metrics calculation engine
+- `ai-anomaly-detection/workloads/` - Normal and attack workload manifests
+- `ai-anomaly-detection/*.yaml` - Detector RBAC/deployment/service/PVC manifests
+- `ai-anomaly-detection/deploy.sh` - End-to-end deploy helper script
+- `ai-anomaly-detection/port-forward.sh` - Local browser access helper script
 
 ---
 
@@ -162,11 +171,94 @@ Stop/restart:
 
 ---
 
-## 8) Demo Procedure (IEEE Flow)
+## 8) EnergyGuard AI Cloud Security & Monitoring Dashboard (Upgraded Frontend)
 
-1. Open detector dashboard.
+The frontend for the AI Anomaly Detection Framework has been completely upgraded from a basic developer debugging view to a modern, publication-grade **Energy-Aware Cloud Security & AI Monitoring Dashboard**.
+
+### Key UI Features & Architecture:
+- **Clean Dark Cybersecurity Theme**: Tailored color palette (charcoal `#0a0d14`, cards `#141b2a`, healthy green `#10b981`, threat red `#ef4444`, warning amber `#f59e0b`, telemetry cyan `#06b6d4`, electric blue `#38bdf8`), typography with *Inter* and *JetBrains Mono*, and subtle glassmorphic styling.
+- **Strict Data Truthfulness**: 100% connected to existing backend APIs—zero fake telemetry, zero fake AI scores, zero hardcoded research metrics.
+- **7 Dedicated Dashboard Views**:
+  1. **Overview**: Live status indicator, 6 real-time KPI cards (System Status, Pods Monitored, Active Anomalies, Mitigations, Current Energy Rate, Training Status), **Security Command Center** (prominent active threat banner vs. clean protected state), and interactive Baseline Training widget with animated progress bar.
+  2. **Live Monitoring**: 5 dedicated time-series charts (Energy Consumption, CPU Utilization, Memory Working Set, Network Throughput, and Energy-to-CPU Ratio) with pod focus dropdown, status filter, and live search.
+  3. **Live Pod Table**: Color-coded status badges, compact monospace telemetry, row highlighting on anomalies, and shortened pod names with tooltip expansion.
+  4. **AI Detection & Model Comparison**: Explains the 8-dimensional Energy-Aware feature vector, side-by-side comparison table (Energy-Aware IF vs. Basic IF), real-time Anomaly Score Trajectory chart, and a *"Why Was This Workload Flagged?"* root-cause inspector.
+  5. **Security Incidents**: Summary metrics, paginated Recent Security Events log, and the visual **Attack Response Lifecycle Timeline** (`Normal` → `Resource Abnormality` → `AI Anomaly` → `Consecutive Confirmation` → `Throttling` → `Termination` → `Recovery`).
+  6. **Mitigation Operations**: 6-stage progressive mitigation pipeline (Detection, Confirmation, Deployment Throttling, Observation, Pod Deletion, Recovery), true energy conservation impact analysis, and chronological mitigation log.
+  7. **Kubernetes Infrastructure**: Visual K3s cluster node topology (Control-Plane / Primary Node, Observability Stack) with live container distribution and resource usage.
+  8. **Research Analytics (IEEE Evaluation)**: Replaced raw JSON dump with formatted metric cards (Accuracy, Precision, Recall, F1 Score, False Positive Rate, Detection Latency), comparative bar chart, "Calculate IEEE Metrics" trigger, and optional "View Raw Response" JSON drawer.
+
+---
+
+## 9) How to Run the Updated Frontend
+
+### Method A: In the Kubernetes Cluster (Recommended Production / Demo Flow)
+
+Whenever you deploy to K3s or rebuild the detector:
+
+```bash
+# 1. Ensure Docker daemon is running in WSL2
+sudo service docker start
+
+# 2. Build the updated Docker image (tagged as v2 matching deployment spec)
+cd ai-anomaly-detection/pipeline
+docker build -t todo-ai-detector:v2 .
+
+# 3. Save and import the image directly into K3s containerd
+docker save todo-ai-detector:v2 -o ai-detector.tar
+sudo k3s ctr images import ai-detector.tar
+rm ai-detector.tar
+cd ../..
+
+# 4. Restart the detector deployment to run the updated container
+kubectl rollout restart deployment/ai-detector -n default
+kubectl rollout status deployment/ai-detector -n default
+```
+
+**Accessing the Dashboard in Your Browser:**
+
+- **Via WSL2 Port-Forwarding (Fastest & Most Reliable):**
+  ```bash
+  ./ai-anomaly-detection/port-forward.sh start
+  ./ai-anomaly-detection/port-forward.sh status
+  ```
+  Open **`http://localhost:8006`** in your browser.
+
+- **Via Kubernetes NodePort:**
+  Open **`http://localhost:30080`** (or `http://<node-ip>:30080`).
+
+---
+
+### Method B: Standalone Local Preview / Development Mode
+
+You can also run the upgraded dashboard directly on your host machine without rebuilding the Docker container:
+
+```bash
+# 1. Ensure Python dependencies are installed in your virtual environment
+.venv-research/bin/pip install flask flask-cors pandas scikit-learn
+
+# 2. Run the dashboard preview server (connects to real detections.csv and telemetry)
+.venv-research/bin/python -c "
+import sys, os
+sys.path.insert(0, 'ai-anomaly-detection/pipeline')
+from main import startup
+"
+```
+
+Or run the preconfigured verification preview server (loaded with real experiment data from `detections.csv`):
+```bash
+.venv-research/bin/python .gemini/antigravity-ide/brain/9a1809e0-e7f3-4d00-af89-250c060f842d/scratch/test_server.py
+```
+
+Open **`http://localhost:8089`** in your browser to inspect all 7 views immediately.
+
+---
+
+## 10) Demo Procedure (IEEE Flow)
+
+1. Open detector dashboard (`http://localhost:8006` or `http://localhost:30080`).
 2. Click **Start Baseline Training**.
-3. Wait until training reaches `30/30`.
+3. Wait until training reaches `30/30` windows.
 4. Apply one attack at a time:
 
 ```bash
@@ -176,10 +268,11 @@ kubectl apply -f ai-anomaly-detection/workloads/attack-combined.yaml
 ```
 
 5. Observe:
+   - Security Command Center active threat alerts
+   - Live monitoring graphs and pod telemetry
    - EA vs Basic model outputs
-   - Consecutive anomaly counts
-   - Mitigation actions
-6. Click **Calculate IEEE Metrics**.
+   - Attack response timeline & mitigation progression
+6. Navigate to **Research Analytics** and click **Calculate IEEE Metrics**.
 7. Repeat with clean baseline for each scenario for stronger results.
 
 Cleanup attack workloads:
@@ -192,7 +285,7 @@ kubectl delete -f ai-anomaly-detection/workloads/attack-combined.yaml --ignore-n
 
 ---
 
-## 9) Kepler on WSL2 Reality
+## 11) Kepler on WSL2 Reality
 
 Kepler may crash on WSL2 due to kernel/eBPF limitations. The detector is implemented to continue in fallback mode:
 
@@ -203,27 +296,21 @@ This keeps the end-to-end demo running and evaluation pipeline functional.
 
 ---
 
-## 10) Prometheus and Grafana Access
+## 12) Prometheus and Grafana Access
 
 Grafana is exposed as NodePort (`30000`) and can be opened in browser.
 
 Prometheus service is `ClusterIP` by default. Access with:
 
 ```bash
-ckubectl delete -f ai-anomaly-detection/workloads/attack-cpu.yaml --ignore-not-found
-kubectl delete -f ai-anfoundomaly-detection/workloads/attack-memory.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/workloads/attack-combined.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/workloads/normal-workload.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/ai-detector-service.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/ai-detector-deployment.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/ai-detector-pvc.yaml --ignore-not-found
-kubectl delete -f ai-anomaly-detection/rbac.yaml --ignore-not-```
+kubectl port-forward -n monitoring service/prometheus-service 9090:9090
+```
 
 Then open `http://localhost:9090`.
 
 ---
 
-## 11) Common Troubleshooting
+## 13) Common Troubleshooting
 
 ### A) Dashboard flips to IDLE unexpectedly
 
@@ -253,7 +340,7 @@ kubectl get pods -A
 
 ---
 
-## 12) Useful Commands
+## 14) Useful Commands
 
 ```bash
 # Cluster status
@@ -274,7 +361,7 @@ kubectl rollout status deployment/ai-detector -n default
 
 ---
 
-## 13) Full Cleanup
+## 15) Full Cleanup
 
 ```bash
 kubectl delete -f ai-anomaly-detection/workloads/attack-cpu.yaml --ignore-not-found
@@ -290,7 +377,7 @@ kubectl delete -f kubernetes/ --ignore-not-found
 
 ---
 
-## 14) Notes for Final Year Demo/Report
+## 16) Notes for Final Year Demo/Report
 
 - Keep screenshots of:
   - Baseline training completion

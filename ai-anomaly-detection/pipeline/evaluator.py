@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import asdict, dataclass
 
 import pandas as pd
@@ -67,7 +68,17 @@ class Evaluator:
         print("└─────────────────┴───────────────┴───────────┘")
 
         payload = {"energy_aware": asdict(ea), "basic": asdict(basic)}
-        with open("/app/logs/evaluation_results.json", "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
-        pd.DataFrame([asdict(ea), asdict(basic)]).to_csv("/app/logs/evaluation_results.csv", index=False)
+        try:
+            os.makedirs("/app/logs", exist_ok=True)
+            with open("/app/logs/evaluation_results.json", "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+            pd.DataFrame([asdict(ea), asdict(basic)]).to_csv("/app/logs/evaluation_results.csv", index=False)
+        except Exception:
+            try:
+                os.makedirs("results", exist_ok=True)
+                with open("results/evaluation_results.json", "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2)
+                pd.DataFrame([asdict(ea), asdict(basic)]).to_csv("results/evaluation_results.csv", index=False)
+            except Exception:
+                pass
         return payload

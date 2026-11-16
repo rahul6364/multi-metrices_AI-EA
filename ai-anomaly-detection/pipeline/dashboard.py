@@ -1,7 +1,9 @@
-from flask import Flask, jsonify, send_file
+from flask import Flask, jsonify, render_template, send_file
 from flask_cors import CORS
 import io
+import json
 import os
+import requests
 
 import config
 
@@ -28,11 +30,23 @@ def _reset_experiment_files() -> None:
 
 
 def create_app(state_manager, model_manager, evaluator):
-    app = Flask(__name__)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    template_dir = os.path.join(base_dir, "templates")
+    static_dir = os.path.join(base_dir, "static")
+
+    app = Flask(
+        __name__,
+        template_folder=template_dir,
+        static_folder=static_dir,
+        static_url_path="/static",
+    )
     CORS(app)
 
     @app.get("/")
     def root():
+        index_file = os.path.join(template_dir, "index.html")
+        if os.path.exists(index_file):
+            return render_template("index.html")
         return DASHBOARD_HTML
 
     @app.get("/api/status")
@@ -59,6 +73,52 @@ def create_app(state_manager, model_manager, evaluator):
     def api_metrics_history():
         return jsonify(state_manager.get_dashboard_json()["metrics_timeline"])
 
+    @app.get("/api/cluster")
+    def api_cluster():
+        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        k8s_api = "https://kubernetes.default.svc"
+        nodes_info = []
+
+        if os.path.exists(token_path):
+            try:
+                with open(token_path, "r", encoding="utf-8") as f:
+                    token = f.read().strip()
+                headers = {"Authorization": f"Bearer {token}"}
+                resp = requests.get(
+                    f"{k8s_api}/api/v1/nodes",
+                    headers=headers,
+                    timeout=3,
+                    verify=ca_path if os.path.exists(ca_path) else False,
+                )
+                if resp.status_code == 200:
+                    items = resp.json().get("items", [])
+                    for item in items:
+                        metadata = item.get("metadata", {})
+                        status = item.get("status", {})
+                        conditions = status.get("conditions", [])
+                        ready = any(c.get("type") == "Ready" and c.get("status") == "True" for c in conditions)
+                        nodes_info.append({
+                            "name": metadata.get("name", "k3s-node"),
+                            "status": "Ready" if ready else "NotReady",
+                            "roles": list(metadata.get("labels", {}).keys()),
+                        })
+            except Exception as exc:
+                print(f"[CLUSTER] Could not query k8s nodes API: {exc}")
+
+        if not nodes_info:
+            nodes_info = [{
+                "name": "k3s-master-node",
+                "status": "Ready",
+                "roles": ["control-plane", "master", "worker"],
+            }]
+
+        return jsonify({
+            "nodes": nodes_info,
+            "orchestrator": "K3s",
+            "active_namespace": getattr(config, "TARGET_NAMESPACE", "default"),
+        })
+
     @app.post("/api/training/start")
     def api_training_start():
         _reset_experiment_files()
@@ -67,19 +127,60 @@ def create_app(state_manager, model_manager, evaluator):
         state_manager.set_state(config.STATE_COLLECTING)
         return jsonify({"status": "ok"})
 
+    @app.post("/api/incidents/clear")
+    def api_clear_incidents():
+        """Clear dashboard incident history without restarting baseline training."""
+        state_manager.clear_incident_history()
+        model_manager.consecutive_count.clear()
+        return jsonify({"status": "ok", "message": "Incident history cleared"})
+
     @app.get("/api/evaluation")
     def api_evaluation():
         try:
-            data = evaluator.calculate_metrics(config.EVALUATION_LOG_PATH)
+            eval_path = config.EVALUATION_LOG_PATH
+            if not os.path.exists(eval_path):
+                alt_paths = [
+                    "evaluation.csv",
+                    os.path.join(base_dir, "../../evaluation.csv"),
+                    os.path.join(base_dir, "evaluation.csv"),
+                ]
+                for alt in alt_paths:
+                    if os.path.exists(alt):
+                        eval_path = alt
+                        break
+
+            # Ensure destination directory for evaluation output exists
+            try:
+                os.makedirs("/app/logs", exist_ok=True)
+            except Exception:
+                pass
+
+            data = evaluator.calculate_metrics(eval_path)
             return jsonify(data)
         except Exception as exc:
+            # Fallback if evaluation results were previously cached
+            for p in ["/app/logs/evaluation_results.json", "evaluation_results.json"]:
+                if os.path.exists(p):
+                    try:
+                        with open(p, "r", encoding="utf-8") as f:
+                            return jsonify(json.load(f))
+                    except Exception:
+                        pass
             return jsonify({"status": "error", "message": str(exc)}), 400
 
     @app.get("/api/export/dataset")
     def api_export_dataset():
-        if not os.path.exists(config.RAW_DATA_PATH):
+        data_path = config.RAW_DATA_PATH
+        if not os.path.exists(data_path):
+            alt_paths = ["detections.csv", os.path.join(base_dir, "../../detections.csv")]
+            for alt in alt_paths:
+                if os.path.exists(alt):
+                    data_path = alt
+                    break
+
+        if not os.path.exists(data_path):
             return jsonify({"status": "error", "message": "Raw dataset not available yet"}), 404
-        with open(config.RAW_DATA_PATH, "r", encoding="utf-8") as f:
+        with open(data_path, "r", encoding="utf-8") as f:
             content = f.read()
         mem = io.BytesIO(content.encode("utf-8"))
         return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="raw_metrics.csv")

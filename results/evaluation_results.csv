@@ -1,0 +1,3 @@
+model,precision,recall,f1_score,accuracy,fpr,fnr,detection_latency
+Energy-Aware,0.0,0.0,0.0,0.9054054054054054,0.0945945945945946,0.0,-1.0
+Basic IF,0.0,0.0,0.0,0.9980694980694981,0.0019305019305019305,0.0,-1.0

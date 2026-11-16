@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EnergyGuard | Energy-Aware Cloud Security & AI Monitoring Dashboard</title>
+  <meta name="description" content="AI-Based Energy-Aware Anomaly Detection and Automated Mitigation Framework for Kubernetes-Based Cloud Systems">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Modular CSS Design System -->
+  <link rel="stylesheet" href="/static/css/variables.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/views.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Persistent Sidebar (Section 15) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div class="sidebar-brand-text">
+          <span class="sidebar-brand-title">EnergyGuard</span>
+          <span class="sidebar-brand-subtitle">Cloud AI Security</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Monitoring & AI</div>
+
+        <a class="nav-item active" data-view="overview" id="nav-overview">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span>Overview</span>
+        </a>
+
+        <a class="nav-item" data-view="monitoring" id="nav-monitoring">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>Live Monitoring</span>
+        </a>
+
+        <a class="nav-item" data-view="detection" id="nav-detection">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <span>AI Detection</span>
+        </a>
+
+        <div class="nav-section-label" style="margin-top: 10px;">Security & Response</div>
+
+        <a class="nav-item" data-view="incidents" id="nav-incidents">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Incidents</span>
+          <span class="nav-badge danger" id="nav-incident-badge" style="display: none;">0</span>
+        </a>
+
+        <a class="nav-item" data-view="mitigation" id="nav-mitigation">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span>Mitigation</span>
+        </a>
+
+        <div class="nav-section-label" style="margin-top: 10px;">Infrastructure & Research</div>
+
+        <a class="nav-item" data-view="kubernetes" id="nav-kubernetes">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <span>Kubernetes</span>
+        </a>
+
+        <a class="nav-item" data-view="research" id="nav-research">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          <span>Research Analytics</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Status Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-status-pill">
+          <span class="status-dot online pulsing" id="sidebar-status-dot"></span>
+          <div style="display: flex; flex-direction: column; overflow: hidden;">
+            <span style="font-weight: 600; color: #fff; font-size: 11.5px;" id="sidebar-status-text">Cluster Connected</span>
+            <span style="font-size: 10px; color: var(--text-muted);" id="sidebar-kepler-text">⚡ Telemetry Active</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-area">
+      <!-- Top Header (Section 16) -->
+      <header class="header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="header-title-container">
+            <div class="header-breadcrumbs" id="header-breadcrumbs">
+              EnergyGuard <span>/</span> <strong style="color: #fff;">OVERVIEW</strong>
+            </div>
+            <h1 class="header-page-title" id="header-page-title">System Overview & Command Center</h1>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- Download Raw Dataset -->
+          <button id="btn-download-dataset" class="btn btn-secondary btn-sm" title="Download historical CSV telemetry dataset">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Export Dataset</span>
+          </button>
+
+          <!-- Live Status Badge -->
+          <div class="header-badge live" id="header-status-badge">
+            <span class="status-dot online pulsing"></span>
+            <span>LIVE</span>
+          </div>
+
+          <!-- Timestamp -->
+          <div class="header-timestamp">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--text-muted);">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="header-timestamp-val">--:--:--</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Main View Container -->
+      <section class="content-wrapper" id="content-wrapper">
+        <!-- Views are rendered dynamically into this container by app.js -->
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Application Module Entry Point -->
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
